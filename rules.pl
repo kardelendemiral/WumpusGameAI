@@ -92,14 +92,25 @@ noWumpus(R1,C1) :-
 
 	).
 
+hasBeenInSight(R1, C1) :-
+	(R1 < 1 ; C1 < 1) ;
+	loca(T, R0 , C0),
+		(
+			(dir(T, east), R1 is R0, ((C1 is C0 + 1) ; (C1 is C0 + 2) ; (C1 is C0 + 3) ; (C1 is C0 + 4))) ;
+			(dir(T, west), R1 is R0, ((C1 is C0 - 1) ; (C1 is C0 - 2) ; (C1 is C0 - 3) ; (C1 is C0 - 4))) ;
+			(dir(T, north), C1 is C0, ((R1 is R0 + 1) ; (R1 is R0 + 2) ; (R1 is R0 + 3) ; (R1 is R0 + 4))) ;
+			(dir(T, south), C1 is C0, ((R1 is R0 - 1) ; (R1 is R0 - 2) ; (R1 is R0 - 3) ; (R1 is R0 - 4))) 
+	).
+
+
 seen(R1, C1) :-
 	wumpusSight(T),
 	loca(T, R0 , C0),
 	(
-		(dir(T, east), ((C1 is C0 + 1) ; (C1 is C0 + 2) ; (C1 is C0 + 3) ; (C1 is C0 + 4))) ;
-		(dir(T, west), ((C1 is C0 - 1) ; (C1 is C0 - 2) ; (C1 is C0 - 3) ; (C1 is C0 - 4))) ;
-		(dir(T, north), ((R1 is R0 + 1) ; (R1 is R0 + 2) ; (R1 is R0 + 3) ; (R1 is R0 + 4))) ;
-		(dir(T, south), ((R1 is R0 - 1) ; (R1 is R0 - 2) ; (R1 is R0 - 3) ; (R1 is R0 - 4))) 
+		(dir(T, east), R1 is R0, ((C1 is C0 + 1) ; (C1 is C0 + 2) ; (C1 is C0 + 3) ; (C1 is C0 + 4))) ;
+		(dir(T, west), R1 is R0, ((C1 is C0 - 1) ; (C1 is C0 - 2) ; (C1 is C0 - 3) ; (C1 is C0 - 4))) ;
+		(dir(T, north), C1 is C0, ((R1 is R0 + 1) ; (R1 is R0 + 2) ; (R1 is R0 + 3) ; (R1 is R0 + 4))) ;
+		(dir(T, south), C1 is C0, ((R1 is R0 - 1) ; (R1 is R0 - 2) ; (R1 is R0 - 3) ; (R1 is R0 - 4))) 
 	).
 
 isNeighbour(R0, C0, R1, C1) :- %ikinci birincinin neighbouru
@@ -109,15 +120,13 @@ isNeighbour(R0, C0, R1, C1) :- %ikinci birincinin neighbouru
 	((C1 #= C0) , (R1 #= R0 + 1)).
 
 wumpus(R, C) :-
-	seen(R, C),
-	isNeighbour(R1, C1, R, C),
+	seen(R, C), %sight olmus
+	isNeighbour(R1, C1, R, C), %bir neightbourunda smell olmus
 	not(noWumpus(R,C)),
 	loca(T1, R1, C1),
 	wumpusSmell(T1),
-	(
-		otherNeighboursFalse(R1, C1, R, C);
-		not(wumpusSight(T1))
-	).
+	otherNeighboursFalse(R1, C1, R, C). % smell olan komsunun diger komsularda wumpus yok
+
 
 isWinner(T) :-
 	action(T, hit),
@@ -130,11 +139,37 @@ isWinner(T) :-
 	).
 
 
-otherNeighboursFalse(R1, C1, R0, C0) :-
-	((C1 #= C0 + 1) , (R1 #= R0) , noWumpus(R1, C1 + 1), noWumpus(R1 + 1, C1), noWumpus(R1 - 1, C1)); %sol komsu
-	((C1 #= C0 - 1) , (R1 #= R0) , noWumpus(R1, C1 - 1), noWumpus(R1 + 1, C1), noWumpus(R1 - 1, C1)); %sag komsu
-	((C1 #= C0) , (R1 #= R0 - 1) , noWumpus(R1 - 1, C1), noWumpus(R1, C1 + 1), noWumpus(R1, C1 - 1)); %alt komsu
-	((C1 #= C0) , (R1 #= R0 + 1) , noWumpus(R1 + 1, C1), noWumpus(R1, C1 + 1), noWumpus(R1, C1 - 1)). %ust komsu
+otherNeighboursFalse(R1, C1, R0, C0) :- %soldakinin komsuları
+	((C0 #= C1 - 1) , (R1 #= R0) ,  %sol komsu
+		(
+			(C #= C1 + 1 ,(noWumpus(R1, C) ; (hasBeenInSight(R1, C), not(seen(R1, C))))),  %sag
+			(R2 #= R1 + 1 , (noWumpus(R2, C1) ; (hasBeenInSight(R2, C1), not(seen(R2, C1))))) ,  %alt
+			(R3 #= R1 - 1 , (noWumpus(R3, C1) ; (hasBeenInSight(R3, C1), not(seen(R3, C1)))))    %ust
+		)) ;
+
+	((C0 #= C1 + 1) , (R1 #= R0) , %sag komsu
+		(
+			(C #= C1 - 1 , (noWumpus(R1, C) ; (hasBeenInSight(R1, C), not(seen(R1, C))))) ,  %sol
+			(R2 #= R1 + 1 , (noWumpus(R2, C1) ; (hasBeenInSight(R2, C1), not(seen(R2, C1))))) ,  %alt
+			(R3 #= R1 - 1 , (noWumpus(R3, C1) ; (hasBeenInSight(R3, C1), not(seen(R3, C1)))))    %ust
+
+		)) ;
+
+	((C1 #= C0) , (R0 #= R1 + 1) , %alt komsu
+		(
+			 (C2 #= C1 - 1 , (noWumpus(R1, C2) ; (hasBeenInSight(R1, C2), not(seen(R1, C2))))) , %sol
+			 (C3 #= C1 + 1 , (noWumpus(R1, C3) ; (hasBeenInSight(R1, C3), not(seen(R1, C3))))) , %sag
+			 (R #= R1 - 1 , (noWumpus(R, C1) ; (hasBeenInSight(R, C1), not(seen(R, C1)))))   %ust
+
+		));
+
+	((C1 #= C0) , (R0 #= R1 - 1) , %ust komsu
+		(
+			(R #= R1 + 1 , (noWumpus(R, C1) ; (hasBeenInSight(R, C1), not(seen(R, C1))))) , %alt
+			(C2 #= C1 + 1 , (noWumpus(R1, C2) ; (hasBeenInSight(R1, C2), not(seen(R1, C2))))) , %sag
+			(C3 #= C1 - 1 , (noWumpus(R1, C3) ; (hasBeenInSight(R1, C3), not(seen(R1, C3)))))   %sol
+
+		)).
 
 
 
@@ -157,13 +192,20 @@ otherNeighboursFalse(R1, C1, R0, C0) :-
 %	stat(I,X,Y, _) -> (not(wumpus(X-1, Y)) , not(wumpus(X+1,Y)) , not(wumpus(X,Y-1)) , not(wumpus(X,Y+1))).
 
 bump(0).
-action(1,forward).
-bump(2).
-action(2,clockWise).
-action(3,forward).
+wumpusSight(1).
+action(1,clockWise).
+action(2,forward).
+action(3,counterClockWise).
+wumpusSight(4).
 action(4,counterClockWise).
 action(5,forward).
-action(6,counterClockWise).
+action(6,clockWise).
+action(7,forward).
+action(8,forward).
+wumpusSmell(9).
+action(9,hit).
+
+
 
 
 
